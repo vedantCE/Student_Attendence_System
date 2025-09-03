@@ -20,6 +20,7 @@ app.use(cors({
     'http://127.0.0.1:4174',
     // Production domains
     'https://student-attendence-system-alpha.vercel.app',
+    'https://student-attendence-system-9pm2bcvgm.vercel.app',
     'https://student-attendence-system-2-gyb9.onrender.com'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
