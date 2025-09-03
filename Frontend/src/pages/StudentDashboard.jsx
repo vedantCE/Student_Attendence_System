@@ -28,11 +28,12 @@ export const StudentDashboard = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://student-attendence-system-2-gyb9.onrender.com';
         const [notificationsResponse, subjectResponse, streaksResponse, leaderboardResponse] = await Promise.all([
-          fetch(`http://localhost:3001/api/attendance/notifications/${user?.rollNo}`),
-          fetch(`http://localhost:3001/api/student/subject-attendance/${user?.rollNo}`),
-          fetch(`http://localhost:3001/api/student/streaks/${user?.rollNo}`),
-          fetch('http://localhost:3001/api/leaderboard')
+          fetch(`${API_BASE_URL}/api/attendance/notifications/${user?.rollNo}`),
+          fetch(`${API_BASE_URL}/api/student/subject-attendance/${user?.rollNo}`),
+          fetch(`${API_BASE_URL}/api/student/streaks/${user?.rollNo}`),
+          fetch(`${API_BASE_URL}/api/leaderboard`)
         ]);
         
         if (notificationsResponse.ok) {

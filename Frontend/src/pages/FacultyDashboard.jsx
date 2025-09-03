@@ -37,10 +37,11 @@ export const FacultyDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       console.log('Fetching dashboard data...');
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://student-attendence-system-2-gyb9.onrender.com';
       const [dashboardResponse, subjectResponse, leaderboardResponse] = await Promise.all([
-        fetch('http://localhost:3001/api/faculty/dashboard'),
-        fetch(`http://localhost:3001/api/faculty/subject-attendance?division=${selectedDivision}`),
-        fetch('http://localhost:3001/api/leaderboard')
+        fetch(`${API_BASE_URL}/api/faculty/dashboard`),
+        fetch(`${API_BASE_URL}/api/faculty/subject-attendance?division=${selectedDivision}`),
+        fetch(`${API_BASE_URL}/api/leaderboard`)
       ]);
       
       if (dashboardResponse.ok) {
@@ -73,7 +74,8 @@ export const FacultyDashboard = () => {
 
   const generateReport = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/faculty/report');
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://student-attendence-system-2-gyb9.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/faculty/report`);
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -94,7 +96,8 @@ export const FacultyDashboard = () => {
     if (!confirm('Send notifications to all students with poor attendance?')) return;
     
     try {
-      const response = await fetch('http://localhost:3001/api/faculty/bulk-notify', {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://student-attendence-system-2-gyb9.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/faculty/bulk-notify`, {
         method: 'POST'
       });
       if (response.ok) {
@@ -110,7 +113,8 @@ export const FacultyDashboard = () => {
 
   const sendWarningEmail = async (rollNo) => {
     try {
-      const response = await fetch('http://localhost:3001/api/faculty/warning-email', {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://student-attendence-system-2-gyb9.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/faculty/warning-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rollNo })
@@ -153,7 +157,8 @@ export const FacultyDashboard = () => {
   useEffect(() => {
     const fetchSubjectData = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/faculty/subject-attendance?division=${selectedDivision}`);
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://student-attendence-system-2-gyb9.onrender.com';
+        const response = await fetch(`${API_BASE_URL}/api/faculty/subject-attendance?division=${selectedDivision}`);
         if (response.ok) {
           const data = await response.json();
           setSubjectAttendance(data);
