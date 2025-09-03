@@ -17,7 +17,9 @@ app.use(cors({
     'http://localhost:4173',
     'http://localhost:4174',
     'http://127.0.0.1:4173',
-    'http://127.0.0.1:4174'
+    'http://127.0.0.1:4174',
+    // Production domain
+    'https://student-attendence-system-alpha.vercel.app'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
