@@ -30,9 +30,10 @@ const submitAttendance = async (req, res) => {
     const absentStudents = students.filter(student => student.status === 'Absent');
     console.log('Faculty Email:', facultyEmail);
     console.log('Absent Students:', absentStudents.length);
+    console.log('Total Students:', students.length);
     
-    if (facultyEmail && absentStudents.length > 0) {
-      await sendAbsenteeEmail(facultyEmail, subject, date, time, absentStudents, division);
+    if (facultyEmail) {
+      await sendAbsenteeEmail(facultyEmail, subject, date, time, absentStudents, division, students.length);
     }
     
     if (absentStudents.length > 0) {
@@ -42,7 +43,7 @@ const submitAttendance = async (req, res) => {
 
     res.json({ 
       message: 'Attendance submitted successfully',
-      facultyEmailSent: facultyEmail && absentStudents.length > 0,
+      facultyEmailSent: !!facultyEmail,
       studentEmailsSent: absentStudents.length
     });
   } catch (error) {

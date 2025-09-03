@@ -1,7 +1,9 @@
 const transporter = require('../config/mailer');
 
-const sendAbsenteeEmail = async (facultyEmail, subject, date, time, absentStudents, division) => {
+const sendAbsenteeEmail = async (facultyEmail, subject, date, time, absentStudents, division, totalStudents) => {
   const absentList = absentStudents.map(student => `Roll No: ${student.rollNo}`).join('\n');
+  const presentCount = totalStudents - absentStudents.length;
+  const isAllPresent = absentStudents.length === 0;
   
   const mailOptions = {
     from: process.env.EMAIL_FROM,
@@ -17,12 +19,21 @@ const sendAbsenteeEmail = async (facultyEmail, subject, date, time, absentStuden
           <p><strong>Date:</strong> ${date}</p>
           <p><strong>Time:</strong> ${time}</p>
           <p><strong>Division:</strong> ${division === 'div1' ? 'Division 1' : 'Division 2'}</p>
+          <p><strong>Total Students:</strong> ${totalStudents}</p>
+          <p><strong>Present:</strong> ${presentCount}</p>
+          <p><strong>Absent:</strong> ${absentStudents.length}</p>
         </div>
         
-        <div style="background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444;">
-          <h3 style="margin: 0 0 10px 0; color: #dc2626;">Absent Students (${absentStudents.length}):</h3>
-          <pre style="font-family: monospace; background: white; padding: 10px; border-radius: 4px;">${absentList || 'No students absent'}</pre>
-        </div>
+        ${isAllPresent ? 
+          `<div style="background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e;">
+            <h3 style="margin: 0 0 10px 0; color: #16a34a;">🎉 Excellent! All Students Present</h3>
+            <p style="color: #15803d; margin: 0;">Congratulations! All ${totalStudents} students attended today's class.</p>
+          </div>` :
+          `<div style="background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444;">
+            <h3 style="margin: 0 0 10px 0; color: #dc2626;">Absent Students (${absentStudents.length}):</h3>
+            <pre style="font-family: monospace; background: white; padding: 10px; border-radius: 4px;">${absentList}</pre>
+          </div>`
+        }
         
         <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
           This is an automated email from Student Attendance System.
