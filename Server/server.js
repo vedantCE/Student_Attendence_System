@@ -246,7 +246,7 @@ app.post('/api/attendance/submit', async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' });
     }
     
-    const date = new Date().toLocaleDateString();
+    const date = new Date().toLocaleDateString('en-GB');
     const time = new Date().toLocaleTimeString();
 
     // Clear existing attendance for today
@@ -503,6 +503,166 @@ app.post('/api/faculty/warning-email', async (req, res) => {
     
     await transporter.sendMail(mailOptions);
     res.json({ message: 'Warning email sent successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get subject-wise attendance data for faculty dashboard
+app.get('/api/faculty/subject-attendance', async (req, res) => {
+  try {
+    const { division } = req.query;
+    const filter = division ? { division } : {};
+    const allRecords = await Attendance.find(filter);
+    const subjectStats = {};
+    
+    allRecords.forEach(record => {
+      if (!subjectStats[record.subject]) {
+        subjectStats[record.subject] = { present: 0, total: 0 };
+      }
+      subjectStats[record.subject].total++;
+      if (record.status === 'Present') {
+        subjectStats[record.subject].present++;
+      }
+    });
+    
+    const chartData = Object.entries(subjectStats).map(([subject, stats]) => ({
+      subject,
+      present: stats.present,
+      absent: stats.total - stats.present,
+      percentage: stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0
+    }));
+    
+    res.json(chartData);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get subject-wise attendance data for specific student
+app.get('/api/student/subject-attendance/:rollNo', async (req, res) => {
+  try {
+    const { rollNo } = req.params;
+    const records = await Attendance.find({ rollNo: parseInt(rollNo) });
+    const subjectStats = {};
+    
+    records.forEach(record => {
+      if (!subjectStats[record.subject]) {
+        subjectStats[record.subject] = { present: 0, total: 0 };
+      }
+      subjectStats[record.subject].total++;
+      if (record.status === 'Present') {
+        subjectStats[record.subject].present++;
+      }
+    });
+    
+    const chartData = Object.entries(subjectStats).map(([subject, stats]) => ({
+      subject,
+      present: stats.present,
+      absent: stats.total - stats.present,
+      percentage: stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0
+    }));
+    
+    res.json(chartData);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get student streaks
+app.get('/api/student/streaks/:rollNo', async (req, res) => {
+  try {
+    const { rollNo } = req.params;
+    const records = await Attendance.find({ rollNo: parseInt(rollNo) }).sort({ date: 1, time: 1 });
+    
+    if (records.length === 0) {
+      return res.json({});
+    }
+    
+    const subjectStreaks = {};
+    const subjectRecords = {};
+    
+    records.forEach(record => {
+      if (!subjectRecords[record.subject]) {
+        subjectRecords[record.subject] = [];
+      }
+      subjectRecords[record.subject].push(record);
+    });
+    
+    Object.entries(subjectRecords).forEach(([subject, subjectData]) => {
+      let currentStreak = 0;
+      let maxStreak = 0;
+      let tempStreak = 0;
+      
+      // Calculate streaks
+      for (let i = subjectData.length - 1; i >= 0; i--) {
+        if (subjectData[i].status === 'Present') {
+          tempStreak++;
+          maxStreak = Math.max(maxStreak, tempStreak);
+          if (i === subjectData.length - 1) {
+            currentStreak = tempStreak;
+          }
+        } else {
+          if (i === subjectData.length - 1) {
+            currentStreak = 0;
+          }
+          tempStreak = 0;
+        }
+      }
+      
+      // Check if current streak is still active
+      const lastRecord = subjectData[subjectData.length - 1];
+      const isActive = lastRecord && lastRecord.status === 'Present' && currentStreak >= 2;
+      
+      subjectStreaks[subject] = {
+        current: isActive ? currentStreak : 0,
+        max: maxStreak,
+        isActive
+      };
+    });
+    
+    res.json(subjectStreaks);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get leaderboard
+app.get('/api/leaderboard', async (req, res) => {
+  try {
+    const allRecords = await Attendance.find({});
+    const studentStats = {};
+    
+    // Calculate attendance stats from existing records
+    allRecords.forEach(record => {
+      if (!studentStats[record.rollNo]) {
+        studentStats[record.rollNo] = {
+          rollNo: record.rollNo,
+          division: record.rollNo <= 91 ? 'Division 1' : 'Division 2',
+          present: 0,
+          total: 0,
+          points: 0
+        };
+      }
+      
+      studentStats[record.rollNo].total++;
+      if (record.status === 'Present') {
+        studentStats[record.rollNo].present++;
+        studentStats[record.rollNo].points += 10; // 10 points per attendance
+      }
+    });
+    
+    // Convert to array and calculate percentage
+    const leaderboard = Object.values(studentStats)
+      .filter(student => student.total > 0) // Only students with attendance records
+      .map(student => ({
+        ...student,
+        percentage: Math.round((student.present / student.total) * 100)
+      }))
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 20); // Top 20
+    
+    res.json(leaderboard);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { CheckCircle } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 export const AttendancePage = () => {
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
@@ -10,6 +12,8 @@ export const AttendancePage = () => {
   });
   const [students, setStudents] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
@@ -50,6 +54,7 @@ export const AttendancePage = () => {
   };
 
   const handleSubmit = async () => {
+    setIsSubmitting(true);
     try {
       console.log('Submitting:', { students, subject: formData.subjectName, division: formData.division });
       
@@ -70,25 +75,35 @@ export const AttendancePage = () => {
 
       if (response.ok) {
         const result = await response.json();
-        const absentStudents = getAbsentStudents();
-        const facultyMsg = result.facultyEmailSent ? ' Faculty notified.' : '';
-        const studentMsg = result.studentEmailsSent > 0 ? ` ${result.studentEmailsSent} students notified.` : '';
-        toast.success(`Attendance submitted! ${absentStudents.length} absent.${facultyMsg}${studentMsg}`);
+        setIsSubmitting(false);
+        setShowSuccess(true);
         
-        // Reset form
-        setFormData({
-          facultyEmail: '',
-          subjectName: '',
-          division: 'div1'
-        });
-        setStudents([]);
-        setShowModal(false);
+        // Hide success animation after 2 seconds
+        setTimeout(() => {
+          setShowSuccess(false);
+          setShowModal(false);
+          
+          const absentStudents = getAbsentStudents();
+          const facultyMsg = result.facultyEmailSent ? ' Faculty notified.' : '';
+          const studentMsg = result.studentEmailsSent > 0 ? ` ${result.studentEmailsSent} students notified.` : '';
+          toast.success(`Attendance submitted! ${absentStudents.length} absent.${facultyMsg}${studentMsg}`);
+          
+          // Reset form
+          setFormData({
+            facultyEmail: '',
+            subjectName: '',
+            division: 'div1'
+          });
+          setStudents([]);
+        }, 2000);
       } else {
+        setIsSubmitting(false);
         const errorData = await response.text();
         console.log('Error response:', errorData);
         toast.error(`Failed to submit: ${response.status}`);
       }
     } catch (error) {
+      setIsSubmitting(false);
       console.log('Fetch error:', error);
       toast.error(`Network error: ${error.message}`);
     }
@@ -222,34 +237,56 @@ export const AttendancePage = () => {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md transform transition-all duration-300 scale-100">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Confirm to Submit?</h3>
-            
-            <div className="mb-6">
-              <p className="text-gray-600 mb-2">Absent Students: <span className="font-semibold text-red-600">{getAbsentStudents().length}</span></p>
-              {getAbsentStudents().length > 0 && (
-                <div className="bg-red-50 p-3 rounded-lg">
-                  <p className="text-sm text-red-700 font-medium">Absent Students:</p>
-                  {getAbsentStudents().map((student, index) => (
-                    <p key={index} className="text-sm text-red-600">• {student.name || `Roll No. ${student.rollNo}`}</p>
-                  ))}
+            {isSubmitting ? (
+              <div className="text-center py-8">
+                <div className="w-24 h-24 mx-auto mb-4">
+                  <DotLottieReact
+                    src="/animations/loader.json"
+                    loop
+                    autoplay
+                  />
                 </div>
-              )}
-            </div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Submitting Attendance...</h3>
+                <p className="text-gray-600">Please wait while we process your submission</p>
+              </div>
+            ) : showSuccess ? (
+              <div className="text-center py-8">
+                <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4 animate-bounce" />
+                <h3 className="text-xl font-semibold text-green-800 mb-2">Success!</h3>
+                <p className="text-gray-600">Attendance submitted successfully</p>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">Confirm to Submit?</h3>
+                
+                <div className="mb-6">
+                  <p className="text-gray-600 mb-2">Absent Students: <span className="font-semibold text-red-600">{getAbsentStudents().length}</span></p>
+                  {getAbsentStudents().length > 0 && (
+                    <div className="bg-red-50 p-3 rounded-lg">
+                      <p className="text-sm text-red-700 font-medium">Absent Students:</p>
+                      {getAbsentStudents().map((student, index) => (
+                        <p key={index} className="text-sm text-red-600">• {student.name || `Roll No. ${student.rollNo}`}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 px-4 py-3 bg-gray-300 text-gray-700 rounded-xl hover:bg-gray-400 transition-all duration-200"
-              >
-                Edit
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200"
-              >
-                Confirm Submit
-              </button>
-            </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="flex-1 px-4 py-3 bg-gray-300 text-gray-700 rounded-xl hover:bg-gray-400 transition-all duration-200"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200"
+                  >
+                    Confirm Submit
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

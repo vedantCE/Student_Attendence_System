@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { AttendancePieChart } from '../components/ui/AttendancePieChart.jsx';
+import { Leaderboard } from '../components/ui/Leaderboard.jsx';
+import { FileText, Mail, RefreshCw, BookOpen, PartyPopper, Calendar, Clock } from 'lucide-react';
+import { formatDateToDDMMYYYY } from '../utils/dateUtils.js';
 
 export const FacultyDashboard = () => {
   const { user, logout } = useAuth();
@@ -19,6 +23,9 @@ export const FacultyDashboard = () => {
   });
   const [allClasses, setAllClasses] = useState([]);
   const [filteredClasses, setFilteredClasses] = useState([]);
+  const [subjectAttendance, setSubjectAttendance] = useState([]);
+  const [selectedDivision, setSelectedDivision] = useState('div1');
+  const [leaderboard, setLeaderboard] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -30,17 +37,30 @@ export const FacultyDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       console.log('Fetching dashboard data...');
-      const response = await fetch('http://localhost:3001/api/faculty/dashboard');
-      if (response.ok) {
-        const data = await response.json();
+      const [dashboardResponse, subjectResponse, leaderboardResponse] = await Promise.all([
+        fetch('http://localhost:3001/api/faculty/dashboard'),
+        fetch(`http://localhost:3001/api/faculty/subject-attendance?division=${selectedDivision}`),
+        fetch('http://localhost:3001/api/leaderboard')
+      ]);
+      
+      if (dashboardResponse.ok) {
+        const data = await dashboardResponse.json();
         console.log('Dashboard data:', data);
         setStats(data.stats);
         setRecentClasses(data.recentClasses);
         setAllClasses(data.recentClasses);
         setFilteredClasses(data.recentClasses);
         setPoorPerformers(data.poorPerformers);
-      } else {
-        console.error('Failed to fetch dashboard data:', response.status);
+      }
+      
+      if (subjectResponse.ok) {
+        const subjectData = await subjectResponse.json();
+        setSubjectAttendance(subjectData);
+      }
+      
+      if (leaderboardResponse.ok) {
+        const leaderboardData = await leaderboardResponse.json();
+        setLeaderboard(leaderboardData);
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -59,7 +79,7 @@ export const FacultyDashboard = () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `attendance-report-${new Date().toLocaleDateString()}.csv`;
+        a.download = `attendance-report-${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -129,6 +149,22 @@ export const FacultyDashboard = () => {
     setFilters({ subject: '', date: '', division: '' });
     setFilteredClasses(allClasses);
   };
+
+  useEffect(() => {
+    const fetchSubjectData = async () => {
+      try {
+        const response = await fetch(`http://localhost:3001/api/faculty/subject-attendance?division=${selectedDivision}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSubjectAttendance(data);
+        }
+      } catch (error) {
+        console.error('Error fetching subject data:', error);
+      }
+    };
+    
+    fetchSubjectData();
+  }, [selectedDivision]);
 
   const TabButton = ({ id, label, active, onClick }) => (
     <button
@@ -218,10 +254,74 @@ export const FacultyDashboard = () => {
         {/* Tab Content */}
         {selectedTab === 'overview' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Division Stats */}
-              <div className="bg-gray-50 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Division Performance</h3>
+            {/* Charts and Leaderboard */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Subject-wise Attendance Pie Chart */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Subject Attendance</h3>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelectedDivision('div1')}
+                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                        selectedDivision === 'div1'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                      }`}
+                    >
+                      Div 1
+                    </button>
+                    <button
+                      onClick={() => setSelectedDivision('div2')}
+                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                        selectedDivision === 'div2'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                      }`}
+                    >
+                      Div 2
+                    </button>
+                  </div>
+                </div>
+                <AttendancePieChart 
+                  data={subjectAttendance} 
+                  title="" 
+                />
+              </div>
+              
+              {/* Leaderboard */}
+              <Leaderboard data={leaderboard} />
+              
+              {/* Quick Actions */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  <button 
+                    onClick={generateReport}
+                    className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-left"
+                  >
+                    <FileText className="w-4 h-4 inline mr-2" />Generate Report
+                  </button>
+                  <button 
+                    onClick={sendBulkNotifications}
+                    className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 text-left"
+                  >
+                    <Mail className="w-4 h-4 inline mr-2" />Send Notifications
+                  </button>
+                  <button 
+                    onClick={fetchDashboardData}
+                    className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 text-left"
+                  >
+                    <RefreshCw className="w-4 h-4 inline mr-2" />Refresh Data
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Division Performance */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Division Performance</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Division 1 (Roll 1-91)</span>
@@ -230,7 +330,9 @@ export const FacultyDashboard = () => {
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div className="bg-blue-500 h-2 rounded-full" style={{width: '85%'}}></div>
                   </div>
-                  
+                </div>
+                
+                <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Division 2 (Roll 92-167)</span>
                     <span className="font-semibold text-green-600">78%</span>
@@ -238,31 +340,6 @@ export const FacultyDashboard = () => {
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div className="bg-green-500 h-2 rounded-full" style={{width: '78%'}}></div>
                   </div>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="bg-gray-50 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <button 
-                    onClick={generateReport}
-                    className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-left"
-                  >
-                    📊 Generate Attendance Report
-                  </button>
-                  <button 
-                    onClick={sendBulkNotifications}
-                    className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 text-left"
-                  >
-                    📧 Send Bulk Notifications
-                  </button>
-                  <button 
-                    onClick={fetchDashboardData}
-                    className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 text-left"
-                  >
-                    🔄 Refresh Data
-                  </button>
                 </div>
               </div>
             </div>
@@ -321,7 +398,9 @@ export const FacultyDashboard = () => {
             
             {filteredClasses.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-6xl mb-4">📚</div>
+                <div className="flex justify-center mb-4">
+                  <BookOpen className="w-16 h-16 text-gray-400" />
+                </div>
                 <p className="text-gray-500">No classes found matching filters</p>
               </div>
             ) : (
@@ -341,8 +420,14 @@ export const FacultyDashboard = () => {
                           </span>
                         </div>
                         <div className="flex items-center gap-4 text-sm text-gray-600">
-                          <span>📅 {classItem.date}</span>
-                          <span>🕐 {classItem.time}</span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4 text-blue-500" />
+                            {formatDateToDDMMYYYY(classItem.date)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-4 h-4 text-blue-500" />
+                            {classItem.time}
+                          </span>
                           <span className="text-green-600 font-medium">
                             {Math.round((classItem.presentCount / classItem.totalCount) * 100)}% attendance
                           </span>
@@ -369,7 +454,9 @@ export const FacultyDashboard = () => {
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Students with Poor Attendance (&lt;75%)</h3>
             {poorPerformers.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-6xl mb-4">🎉</div>
+                <div className="flex justify-center mb-4">
+                  <PartyPopper className="w-16 h-16 text-green-400" />
+                </div>
                 <p className="text-gray-500">All students have good attendance!</p>
               </div>
             ) : (

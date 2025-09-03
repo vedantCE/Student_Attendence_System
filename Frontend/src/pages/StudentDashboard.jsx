@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { AttendancePieChart } from '../components/ui/AttendancePieChart.jsx';
+import { StreakDisplay } from '../components/ui/StreakDisplay.jsx';
+import { Leaderboard } from '../components/ui/Leaderboard.jsx';
+import { Flame, BookOpen } from 'lucide-react';
+import { formatDateToDDMMYYYY } from '../utils/dateUtils.js';
 
 export const StudentDashboard = () => {
   const { user, logout } = useAuth();
@@ -11,6 +16,9 @@ export const StudentDashboard = () => {
     absent: 0,
     percentage: 0
   });
+  const [subjectAttendance, setSubjectAttendance] = useState([]);
+  const [streaks, setStreaks] = useState({});
+  const [leaderboard, setLeaderboard] = useState([]);
   const [filters, setFilters] = useState({
     subject: '',
     date: '',
@@ -20,9 +28,15 @@ export const StudentDashboard = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/attendance/notifications/${user?.rollNo}`);
-        if (response.ok) {
-          const data = await response.json();
+        const [notificationsResponse, subjectResponse, streaksResponse, leaderboardResponse] = await Promise.all([
+          fetch(`http://localhost:3001/api/attendance/notifications/${user?.rollNo}`),
+          fetch(`http://localhost:3001/api/student/subject-attendance/${user?.rollNo}`),
+          fetch(`http://localhost:3001/api/student/streaks/${user?.rollNo}`),
+          fetch('http://localhost:3001/api/leaderboard')
+        ]);
+        
+        if (notificationsResponse.ok) {
+          const data = await notificationsResponse.json();
           const formattedNotifications = data.map(record => ({
             id: record._id,
             subject: record.subject,
@@ -43,6 +57,21 @@ export const StudentDashboard = () => {
           const percentage = totalClasses > 0 ? Math.round((present / totalClasses) * 100) : 0;
 
           setStats({ totalClasses, present, absent, percentage });
+        }
+        
+        if (subjectResponse.ok) {
+          const subjectData = await subjectResponse.json();
+          setSubjectAttendance(subjectData);
+        }
+        
+        if (streaksResponse.ok) {
+          const streaksData = await streaksResponse.json();
+          setStreaks(streaksData);
+        }
+        
+        if (leaderboardResponse.ok) {
+          const leaderboardData = await leaderboardResponse.json();
+          setLeaderboard(leaderboardData);
         }
       } catch (error) {
         console.error('Error fetching notifications:', error);
@@ -109,7 +138,7 @@ export const StudentDashboard = () => {
           </div>
           <div className="text-right">
             <p className="text-lg font-semibold text-blue-600">
-              {new Date().toLocaleDateString()}
+              {new Date().toLocaleDateString('en-GB')}
             </p>
             <p className="text-sm text-gray-600">
               {new Date().toLocaleTimeString()}
@@ -152,30 +181,51 @@ export const StudentDashboard = () => {
         </div>
       </div>
 
-      {/* Attendance Progress Bar */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Attendance Progress</h2>
-        <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
-          <div 
-            className={`h-4 rounded-full transition-all duration-500 ${
-              stats.percentage >= 75 ? 'bg-green-500' : 
-              stats.percentage >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-            }`}
-            style={{ width: `${stats.percentage}%` }}
-          ></div>
+      {/* Streaks Display */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Flame className="w-6 h-6 text-orange-500" />
+          <h2 className="text-xl font-semibold text-gray-800">Your Streaks</h2>
         </div>
-        <div className="flex justify-between text-sm text-gray-600">
-          <span>0%</span>
-          <span className="font-medium">Required: 75%</span>
-          <span>100%</span>
-        </div>
-        {stats.percentage < 75 && (
-          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-yellow-800 text-sm">
-              Your attendance is below 75%. You need to attend more classes to meet the minimum requirement.
-            </p>
+        <StreakDisplay streaks={streaks} />
+      </div>
+
+      {/* Subject-wise Attendance, Progress and Leaderboard */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Pie Chart */}
+        <AttendancePieChart 
+          data={subjectAttendance} 
+          title="My Subject-wise Attendance" 
+        />
+        
+        {/* Attendance Progress Bar */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Overall Progress</h2>
+          <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
+            <div 
+              className={`h-4 rounded-full transition-all duration-500 ${
+                stats.percentage >= 75 ? 'bg-green-500' : 
+                stats.percentage >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+              }`}
+              style={{ width: `${stats.percentage}%` }}
+            ></div>
           </div>
-        )}
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>0%</span>
+            <span className="font-medium">Required: 75%</span>
+            <span>100%</span>
+          </div>
+          {stats.percentage < 75 && (
+            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-yellow-800 text-sm">
+                Your attendance is below 75%. You need to attend more classes to meet the minimum requirement.
+              </p>
+            </div>
+          )}
+        </div>
+        
+        {/* Leaderboard */}
+        <Leaderboard data={leaderboard} currentUserRollNo={user?.rollNo} />
       </div>
 
       {/* Recent Attendance */}
@@ -230,7 +280,9 @@ export const StudentDashboard = () => {
         
         {notifications.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">📚</div>
+            <div className="flex justify-center mb-4">
+              <BookOpen className="w-16 h-16 text-gray-400" />
+            </div>
             <p className="text-gray-500 text-lg">
               {allNotifications.length === 0 
                 ? 'No attendance records found' 
@@ -264,7 +316,7 @@ export const StudentDashboard = () => {
                     <p className="text-gray-700 mb-2">{notification.message}</p>
                   </div>
                   <div className="text-right ml-4">
-                    <p className="text-sm font-medium text-gray-700">{notification.date}</p>
+                    <p className="text-sm font-medium text-gray-700">{formatDateToDDMMYYYY(notification.date)}</p>
                     <p className="text-xs text-gray-500">{notification.time}</p>
                   </div>
                 </div>
