@@ -58,7 +58,8 @@ export const AttendancePage = () => {
     try {
       console.log('Submitting:', { students, subject: formData.subjectName, division: formData.division });
       
-      const response = await fetch('http://localhost:3001/api/attendance/submit', {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://student-attendence-system-2-gyb9.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/attendance/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
