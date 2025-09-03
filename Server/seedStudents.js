@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Connect to MongoDB
-mongoose.connect('mongodb+srv://gabanidharm001_db_user:qqb5urGHDgzU0M6E@cluster0.86zaroz.mongodb.net/student-attendance')
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
