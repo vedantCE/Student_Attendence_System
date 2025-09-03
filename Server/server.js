@@ -9,7 +9,7 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: [
-    'http://localhost:5173',
+    process.env.FRONTEND_URL || 'http://localhost:5173',
     'http://localhost:5174',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:5174',
@@ -19,8 +19,10 @@ app.use(cors({
     'http://127.0.0.1:4173',
     'http://127.0.0.1:4174'
   ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
+
 app.use(express.json());
 
 // Database connection
