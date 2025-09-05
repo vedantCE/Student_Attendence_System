@@ -237,7 +237,7 @@ export const AttendancePage = () => {
       {/* Confirmation Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md transform transition-all duration-300 scale-100">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md transform transition-all duration-300 scale-100 max-h-[80vh] overflow-hidden flex flex-col">
             {isSubmitting ? (
               <div className="text-center py-8">
                 <div className="w-24 h-24 mx-auto mb-4">
@@ -260,10 +260,10 @@ export const AttendancePage = () => {
               <>
                 <h3 className="text-xl font-semibold text-gray-800 mb-4">Confirm to Submit?</h3>
                 
-                <div className="mb-6">
+                <div className="mb-6 flex-1 overflow-hidden">
                   <p className="text-gray-600 mb-2">Absent Students: <span className="font-semibold text-red-600">{getAbsentStudents().length}</span></p>
                   {getAbsentStudents().length > 0 && (
-                    <div className="bg-red-50 p-3 rounded-lg">
+                    <div className="bg-red-50 p-3 rounded-lg max-h-[40vh] overflow-y-auto pr-2">
                       <p className="text-sm text-red-700 font-medium">Absent Students:</p>
                       {getAbsentStudents().map((student, index) => (
                         <p key={index} className="text-sm text-red-600">• {student.name || `Roll No. ${student.rollNo}`}</p>
@@ -272,7 +272,7 @@ export const AttendancePage = () => {
                   )}
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-3 pt-2">
                   <button
                     onClick={() => setShowModal(false)}
                     className="flex-1 px-4 py-3 bg-gray-300 text-gray-700 rounded-xl hover:bg-gray-400 transition-all duration-200"
